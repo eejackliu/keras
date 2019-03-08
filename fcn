@@ -1,0 +1,43 @@
+Dice loss 对于二分类效果明显，bceloss需要尝试，链接1,2是各种不同的loss。链接1中的get_border可得到比target物体本身border大一圈的范围，用来和y_label
+求loss。在unet的bottleneck层应该使用有别与upsample过程中的放大参数，（20，15）下采样再上采样之后是（20，14）下采样过程使用same模式可能会引入噪声
+对于（320，240）放缩五次之后就会面临上采样和原来大小不一的问题。目前看来采用较大的上采样值然后crop掉（transpose conv 特定，bilinear只能成倍数放大）
+比事后pad（（0，0，1，0）这个是在垂直方向pad1个像素）要好一点点，需要证实。
+loss的实现影响最大，因为背景作为others的预测不能主导loss的值，crossentrpy把背景算在loss中，这样可能会陷入局部最小（全部预测为背景也是一种解）
+
+
+论文state of art
+fcn 全卷积，以及 最后的实验证明类别比例与照片比例不一致是不影响结果的
+unet overlap-tile方式以及u形结构
+TernausNet: U-Net with VGG11 Encoder Pre-Trained on ImageNet for Image Segmentation 使用参数vgg预训练参数，上采样部分要取下采样block在maxpool前的最后一个（还得是2的次方）
+而且同一倍数的层中，上采样是下采样倍数的一半。这在人像上比unet那种镜像对称的效果好（nest形式中三层高5%，五层的高2%）
+The Importance of Skip Connections in Biomedical Image Segmentation这里面提到他们使用dice loss会曾在边界缺失的问题，bce则会是模糊的状态
+使用0.2dropout的dice loss效果要好
+need to do：
+模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
+使用sequeezenet来构建，conv层有没有pading=1的影响。
+unet论文中使用overlap-tile方式把大的图片（3000＊3000）切成小的照片（本质上是同样物体的重复出现）但是且出来的照片会有一圈padding，这些padding来自
+与切的时候相邻的区域，没有则以镜像padding解决，pytorch中以replicate参数决定。值得尝试这种方案，如果不用这种方案而使用same的conv就能取得不错效果则不用
+上采样过程中逐步以近似0.5倍率效果貌似比ternausnet中要好
+
+需要阅读的论文
+Focal Loss for Dense Object Detection一
+
+
+Multi-class segmentation of neuronal
+structures in electron microscopy images
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1：https://github.com/killthekitten/kaggle-carvana-2017/blob/master/losses.py
+2：https://www.zhihu.com/question/264537057
