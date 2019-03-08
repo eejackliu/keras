@@ -1,0 +1,250 @@
+http://www.sohu.com/a/129277803_465975
+远程调试按照这个方案配置，可以做到本地写有静态分析功能的代码（速度还不差）。代码同步在远程的server之上之后可以用server的环境和硬件资源来运行程序。
+文件远程同步的功能是用sftp完成的，设置python的project interpreter时候要用ssh来选择server上的对应的python虚拟环境（带不带gpu的anaconda环境）
+在创建run debug configuration的时候要在python interpreter中选在remote的解释器（注意要仔细观察server上ip地址的协议，要和上一步中的interpreter类型
+ssh 一致，否则会出现下午8:18	Error running 'remote': Can't run remote python interpreter: Can't get remote credentials for deployment
+server Copy of project-level server 'test'）这是因为上一部没有创建sftp的remote interpreter类型的网络解释器http://blog.csdn.net/cy309173854/article/details/54890814
+在使用matplot画图的时候会出现  RuntimeError: Invalid DISPLAY variable .虽然远程server已经安装了gtk的各个版本，但是因为是要将事儿上的东西显示在
+本地上，但是没法把server的整个gui环境带过来
+http://blog.csdn.net/levy_cui/article/details/61921348这个办法中可以把图片在远程生成然后  plt.savefig("ivv.jpg")    plt.show()
+注意顺序不能变，最前面要import matplotlib  matplotlib.use("GTKAgg") import matplotlib.pyplot as plt顺序也不能变
+
+
+import numpy as np
+import random
+from cvxopt import matrix, solvers
+import pickle
+a = open("features_train.dat")
+b = open("features_test.dat")
+test = b.readlines()
+train = a.readlines()
+test = [[float(j) for j in i.strip().split()] for i in test]
+train = [[float(j) for j in i.strip().split()] for i in train]
+test = np.array(test)
+train = np.array(train)
+# train=train[:100]
+def cal_n(matr, value):
+    x = matr[matr[:, 0] != value][:, 1:]
+    y = np.array([-1.0] * len(x))
+    return np.c_[y, x]
+def cal_p(matr, value):
+    x = matr[matr[:, 0] == value][:, 1:]
+    y = np.array([1.0] * len(x))
+    return np.c_[y, x]
+
+def kernel(n,m=None,r=100):
+    # kernel is the inner product of two vector  as the member of gram matrix n&m is the collection of vectors
+    # n must be vertical matrix which is made up by single vector,m must be horizontal matrix
+    # thus the result would be a gram matrix
+      if m is None:
+            # return (1+np.dot(n,n.T))**2
+            return np.exp(-r*(2.0*np.linalg.norm(n)-2.0*np.dot(n,n.T)))
+      return np.exp(-r*(np.linalg.norm(n)+np.linalg.norm(m)-2.0*np.dot(n,m.T)))
+def solveqp(x,y,re):
+    q=[-1.0]*len(x)
+    q=np.array(q)
+    q=np.reshape(q,[len(q),1])
+    y=np.reshape(y,[len(y),1])
+    y_=np.dot(y,y.T)
+    p=y_*kernel(x,r=re)
+    g=np.vstack((np.eye(len(x)),-1.0*np.eye(len(x))))
+    h=[c]*len(x)+[0.0]*len(x)
+    a=y
+    a=np.reshape(a,[1,len(a)])
+    b=0.0
+    q=matrix(q)
+    p=matrix(p)
+    g=matrix(g)
+    h=matrix(h)
+    a=matrix(a)
+    b=matrix(b)
+    sol=solvers.qp(p,q,g,h,a,b)
+    alpha=sol["x"]
+    alpha = np.around(alpha, 8)
+    return alpha
+# print alpha
+#     xx=open("val")
+# alpha=pickle.dump(xx)
+# bb=np.array(x)
+
+    # alpha=pickle.load(xx)
+# alpha=x
+# print alpha[-1,0]
+
+# x=np.array(x)
+# print alpha
+# print np.sum(alpha)
+# sv=((c-alpha)/c <0.1)
+# alpha[sv]=0
+# pp= alpha[sv]
+# print pp
+# print "*********"
+
+# w=np.dot(w.T,x)
+# print w
+# print np.linalg.norm(w,ord=2)
+# bb=np.dot(w,x.T)
+# b=y.T-np.dot(w,x.T)
+# print len(y)
+# b=np.sum(b)/len(y)
+# print b
+# test=train
+def test_result(alpha,x,y,test_x,test_y,re):
+
+    w = alpha * y
+    row,col=np.where((alpha<c)&(alpha>0))
+    # print len(row)
+    if len(row)>0:
+        bb=random.choice(row)
+    else:
+        print row,col
+        print "no support"
+    bb=8
+    # print bb
+# np.exp(-r*(np.linalg.norm(n)+np.linalg.norm(m)-2.0*np.dot(n,m.T)))
+# a1=np.linalg.norm(x)
+# a2=np.linalg.norm(x[bb])
+# a3=2.0*np.dot(x,x[bb].T)
+# a4=np.exp(0)
+# print row,col
+    kk=kernel(x,x[bb])
+    b=y[bb]-np.dot(w.T,kk)
+    # print b
+# b=np.sum(b)/len(y)
+    y_pred=np.sign(np.dot(w.T,kernel(x,test_x,r=re))+b)
+    print y_pred.shape
+    out=(y_pred==test_y)
+    out=np.array(out)
+    pred= np.sum(out)/float(len(test_y))
+    return pred
+    # test = np.vstack((cal_n(test, 0), cal_p(test, 0)))
+    # test_x = test[:, 1:]
+    # test_y = test[:, 0]
+def choose_r(x,y,x_val,y_val):
+    a=[]
+    for r in [1,10,100,1000,10000]:
+        print "         r",r
+        alpha=solveqp(x,y,r)
+        pred=test_result(alpha,x,y,x_val,y_val,re=r)
+        print pred
+        a.append(pred)
+    return np.array(a).argmax()
+num=[]
+train = np.vstack((cal_n(train, 0), cal_p(train, 0)))
+for i in range(100):
+    print "no ",i
+    a = random.sample(range(len(train)),1000)
+    b=[j for j in range(len(train))]
+    cha = set(b) - set(a)
+    val = train[a]
+    cha=list(cha)
+    train_t =train[cha]
+    x = train_t[:, 1:]
+    y = train_t[:, 0]
+    y=np.reshape(y,(len(y),1))
+    c = 0.1
+    x_val = val[:, 1:]
+    y_val = val[:, 0]
+    # y_val=np.reshape(y_val,(len(y_val),1))
+    num.append(choose_r(x,y,x_val,y_val))
+oo=open("rr","w")
+pickle.dump(num,oo)
+print num
+
+https://www.joinquant.net/post/8246?tag=python
+https://blog.csdn.net/wenyusuran/article/details/25823861
+
+
+https://zhiyuanliplus.github.io/SVM-SMO
+http://www.cnblogs.com/vivounicorn/archive/2011/06/01/2067496.html
+https://www.zhihu.com/search?type=content&q=smo%20python
+https://zhuanlan.zhihu.com/p/23477491
+https://cloud.tencent.com/developer/article/1005738
+
+https://blog.csdn.net/tunhuzhuang1836/article/details/78474129
+
+https://github.com/MachineLP/Tensorflow-/blob/master/MachinLN/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0-020%EF%BC%9AMachineLN%E4%B9%8BSVM%EF%BC%882%EF%BC%89.md
+
+
+
+https://zhuanlan.zhihu.com/p/33535898
+
+
+
+
+
+import numpy as np
+import random
+a=open("hw4_nnet_train.dat")
+b=open("hw4_nnet_test.dat")
+a=a.readlines()
+b=b.readlines()
+train=[[float(j) for j in i.strip().split()] for i in a]
+test=[[float(j) for j in i.strip().split()] for i in b]
+train=np.array(train)
+test=np.array(test)
+class nnet:
+    def __init__(self,l0,l1,l2):# all x must be colomn base
+        self.w1=np.random.uniform(-0.1,0.1,[l0+1,l1])
+        self.w2=np.random.uniform(-0.1,0.1,[l1+1,l2])
+        # self.w3=np.random.uniform(-0.1,0.1,[l2,l3])
+        self.yita=0.1
+    def forward(self,data):
+
+        self.x=data
+        self.x=np.insert(self.x,0,1)
+        self.x=np.reshape(self.x,(1,len(self.x)))
+        self.s1=np.dot(self.w1.T,self.x.T)
+        self.x1=np.tanh(self.s1)
+        self.x1=np.insert(self.x1,0,1)
+        self.x1=np.reshape(self.x1,[len(self.x1),1])
+        self.s2=np.dot(self.w2.T,self.x1)
+        # self.x2=np.tanh(self.s2)
+        # self.s3=np.doat(self.w3.T,self.x2)
+        return self.s2
+    def cost_func(self,yn,pred):
+        return -2*(yn-pred)
+    def sigma(self,last_sigma,last_w,current_s):
+        return last_sigma*last_w*np.tanh(current_s)
+    def back(self,yn):
+        # sigma1=self.cost_func(yn,self.s3)
+        # sigma2=np.dot(self.w3,sigma1)*self.x2
+        # sigma3=np.dot(self.w2,sigma2)*self.x1
+        # self.w3=self.w3-self.yita*np.dot(sigma1,self.x2)
+        # self.w2=self.w2-self.yita*np.dot(sigma2,self.x1)
+        # self.w1=self.w1-self.yita*np.dot(sigma3,self.x)
+        sigma1=self.cost_func(yn,self. s2)
+        sigma1=np.reshape(sigma1,[1,1])
+        sigma2=np.dot(self.w2[1:],sigma1)*(1-np.tanh(self.s1)**2)# weight for +1(bias) will not go into the lower weight
+        self.w2=self.w2-self.yita*np.dot(self.x1,sigma1.T)
+        self.w1=self.w1-self.yita*np.dot(self.x.T,sigma2.T)
+
+
+
+    # nn = nnet(2, 6, 1)
+def question15(a,b,c):
+    nn = nnet(a, b, c)
+    for i in range(50000):
+        for j in train:
+            out=nn.forward(j[:2])
+            nn.back(j[2])
+    cc=[]
+    for i in test:
+        bb=np.sign(nn.forward(i[:2]))
+        if bb==0:
+            print "fdsfsdf"
+        cc.append(bb==i[2])
+    cc=np.array(cc)
+    return (len(test)-np.sum(cc))/250.0
+#
+def tread_test():
+    x=[]
+    for i in range(500):
+        x.append(question15(2,11,1))
+    x=np.array(x)
+    print np.sum(x)/500.0
+tread_test()
+
+
+
+
