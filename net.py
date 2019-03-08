@@ -6,14 +6,14 @@ import glob
 import math
 import numpy as np
 import tensorflow.keras.layers as layer
+# img_input=keras.layers.Input(shape=(None,None,3),name='main_input')
+# # import Input, merge, Conv2D, ZeroPadding2D, UpSampling2D, Dense, concatenate, Conv2DTranspose
+# # def Nest_Net(img_rows, img_cols, color_type=1, num_class=1, deep_supervision=False):
+# mobile=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=False,input_shape=(None, None, 3),input_tensor=img_input)
+# vgg=keras.applications.vgg16.VGG16(weights='imagenet', include_top=False,input_shape=(None, None, 3),input_tensor=img_input)
 
-# import Input, merge, Conv2D, ZeroPadding2D, UpSampling2D, Dense, concatenate, Conv2DTranspose
-# def Nest_Net(img_rows, img_cols, color_type=1, num_class=1, deep_supervision=False):
-mobile=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=True)
-vgg=keras.applications.vgg16.VGG16(weights='imagenet', include_top=True)
-
-vgg_part = keras.models.Model(inputs=vgg.input, outputs=vgg.get_layer('block1_conv2').output)
-mobile_part=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_14_add').output)
+# vgg_part = keras.models.Model(inputs=vgg.input, outputs=vgg.get_layer('block1_conv2').output)
+# mobile_part=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_14_add').output)
 act='relu'
 
 def standard_unit(input_tensor, stage, nb_filter, kernel_size=3):
@@ -25,19 +25,39 @@ def standard_unit(input_tensor, stage, nb_filter, kernel_size=3):
     # x = Dropout(dropout_rate, name='dp'+stage+'_2')(x)
     x=keras.layers.BatchNormalization()(x)
     return x
-
-
+def duplicate_last_col(tensor):
+    return tf.concat((tensor, tf.expand_dims(tensor[:, :, -1, ...], 2)), axis=2)
 def nest():
-    img_input=keras.layers.Input(shape=(320,240,3),name='main_input')
-    l0_0=keras.models.Model(inputs=img_input, outputs=vgg.get_layer('block1_conv2').output)
+    # l0_0=keras.models.Model(inputs=img_input, outputs=vgg.get_layer('block1_conv2').output)
+    # x=keras.layers.Conv2D(3,(1,1),activation='relu',name='changesize',padding='same')(l0_0)
+    # l1_0=keras.models.Model(inputs=x, outputs=mobile.get_layer('Conv1_relu').output)  #32
+    # l2_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_2_add').output) #24
+    # l3_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_5_add').output) #32
+    # l4_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_12_add').output)#96
+    # midd=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_14_add').output)#160
+    img_input=keras.layers.Input(shape=(None,None,3),name='main_input')
+    x=img_input
+    vgg=keras.applications.vgg16.VGG16(weights='imagenet', include_top=False,input_shape=(None, None, 3),input_tensor=img_input)
+
+    l0_0=vgg.layers[2].output
     x=keras.layers.Conv2D(3,(1,1),activation='relu',name='changesize',padding='same')(l0_0)
-    l1_0=keras.models.Model(inputs=x, outputs=mobile.get_layer('Conv1_relu').output)  #32
-    l2_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_2_add').output) #24
-    l3_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_5_add').output) #32
-    l4_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_12_add').output)#96
-    midd=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_14_add').output)#160
+    mobile=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=False,input_shape=(None, None, 3))
+    # ml1_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('Conv1_relu').output)  #32
+    # ml2_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_2_add').output) #24
+    # ml3_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_5_add').output) #32
+    # ml4_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_12_add').output)#96
+    # mmidd=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_14_add').output)#160
+    m=keras.models.Model(inputs=mobile.input,outputs=[mobile.get_layer('Conv1_relu').output,
+                                                      mobile.get_layer('block_2_add').output,
+                                                      mobile.get_layer('block_5_add').output,
+                                                      mobile.get_layer('block_12_add').output,
+                                                      mobile.get_layer('block_14_add').output])
+
+    l1_0,l2_0,l3_0,l4_0,midd=m(x) # mobilenet in torch midd will get 10,8 otherwise mobile in keras will get 10,7
+
     up4_1=keras.layers.Conv2DTranspose(48,(2,2),(2,2),name='l4_1',padding='same')(midd)
-    up4_1=keras.layers.Cropping2D([0,15])(up4_1)
+    # up4_1=keras.layers.Cropping2D(([0,0],[0,1]))(up4_1)
+    up4_1=keras.layers.Lambda(lambda t:duplicate_last_col(t))(up4_1)
     up4_1=keras.layers.concatenate([up4_1,l4_0],axis=3)
     l4_1=standard_unit(up4_1,'l4',48)
     up3_1=keras.layers.Conv2DTranspose(16,(2,2),(2,2),name='l3_1',padding='same')(l4_0)
@@ -83,20 +103,99 @@ def nest():
     up0_5=keras.layers.concatenate([up0_5,l0_0,l0_1,l0_2,l0_3,l0_4],axis=3)
     l0_5=standard_unit(up0_5,'l0_5',1)
 
-    model=keras.Model(input=img_input,output=[l0_1,l0_2,l0_3,l0_4,l0_5])
 
+
+
+
+
+
+    model=keras.models.Model(inputs=img_input,outputs=[l0_1,l0_2,l0_3,l0_4,l0_5])
     return model
+def test():
+    img_input=keras.layers.Input(shape=(None,None,3),name='main_input')
+    x = keras.layers.Conv2D(12, (3, 3),activation=act, name='conv', kernel_initializer = 'he_normal', padding='same', kernel_regularizer=keras.regularizers.l2(1e-4))(img_input)
+    return keras.models.Model(inputs=img_input,outputs=x)
 def diceloss(y_true,y_pred):
+
     numerator=2*keras.backend.sum(y_true*y_pred)+0.0001
     denominator=keras.backend.sum(y_true**2)+keras.backend.sum(y_pred**2)+0.0001
-    return numerator/denominator/float(len(y_pred))
-
-model=nest()
+    return 1-numerator/denominator/2
+def iou(y_true,y_pred):
+    y_true=(y_true>0.5)
+    y_true=keras.backend.cast(y_true, dtype='float32')
+    return keras.backend.sum(y_true*y_pred)/(keras.backend.sum(y_pred),keras.backend.sum(y_true)-keras.backend.sum(y_true*y_pred)+0.0001)
 batch_size=2
 train_data=keras_data(batch_size=2)
+val_data=keras_data(image_set='test')
 optim=keras.optimizers.Adam()
-steps = math.ceil(len(glob.glob('data/train/'+ '*.png')) / batch_size)
-model.compile(optimizer=optim,loss=diceloss,metrics=['accuracy',label_acc_score])
-model.fit_generator(train_data,steps_per_epoch=steps,epochs=20,verbose=1,
-                    use_multiprocessing=True, workers=2)
+steps = math.ceil(len(glob.glob('data/mask/'+ '*.png')) / batch_size)
+losses={
+    'convl0_1_2':diceloss,
+    'convl0_2_2':diceloss,
+    'convl0_3_2':diceloss,
+    'convl0_4_2':diceloss,
+    'convl0_5_2':diceloss,
+
+}
+metrics={
+    'batch_normalization_21_loss':iou,
+    'batch_normalization_23_loss':iou,
+    'batch_normalization_25_loss':iou,
+    'batch_normalization_27_loss':iou,
+    'batch_normalization_29_loss':iou,
+}
+model=nest()
+model.compile(optimizer=optim,loss=[diceloss,diceloss,diceloss,diceloss,diceloss,] ,loss_weights=[0.2,0.2,0.2,0.2,0.2],metrics=metrics)
+
+model.fit_generator(train_data,steps_per_epoch=steps,epochs=1,use_multiprocessing=True, verbose=1,workers=2,validation_data=val_data,validation_steps=1)
+
+keras.models.save_model(model, 'upp.h5')
+converter=tf.contrib.lite.TFLiteConverter.from_keras_model_file('upp.h5')
+tflite_model = converter.convert()
 #https://github.com/qubvel/segmentation_models
+#if step_per_epoch=0 or train_data give 0 images will cause  AttributeError: ‘ProgbarLogger’ object has no attribute ‘log_values’
+# mask sure this is ok
+
+# >>> b={layer.name:num for num ,layer in enumerate( mobile.layers)}
+# >>> b[block_14_add]
+#
+# import tensorflow as tf
+# from keras.layers import Lambda, Input
+# from keras.models import Model
+# import numpy as np
+#
+# def duplicate_last_row(tensor):
+#     return tf.concat((tensor, tf.expand_dims(tensor[:, -1, ...], 1)), axis=1)
+#
+# def duplicate_last_col(tensor):
+#     return tf.concat((tensor, tf.expand_dims(tensor[:, :, -1, ...], 2)), axis=2)
+#
+# # --------------
+# # Demonstrating with TF:
+#
+# x = tf.convert_to_tensor([[[1, 2, 3], [4, 5, 6]],
+#                           [[10, 20, 30], [40, 50, 60]]])
+#
+# x = duplicate_last_row(duplicate_last_col(x))
+# with tf.Session() as sess:
+#     print(sess.run(x))
+# # [[[ 1  2  3  3]
+# #   [ 4  5  6  6]
+# #   [ 4  5  6  6]]
+# #
+# #  [[10 20 30 30]
+# #   [40 50 60 60]
+# #   [40 50 60 60]]]
+#
+#
+# # --------------
+# # Using as a Keras Layer:
+#
+# inputs = Input(shape=(5, 5, 3))
+# padded = Lambda(lambda t: duplicate_last_row(duplicate_last_col(t)))(inputs)
+#
+# model = Model(inputs=inputs, outputs=padded)
+# model.compile(optimizer="adam", loss='mse', metrics=['mse'])
+# batch = np.random.rand(2, 5, 5, 3)
+# x = model.predict(batch, batch_size=2)
+# print(x.shape)
