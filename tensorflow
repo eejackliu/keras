@@ -29,3 +29,42 @@ num_feature=tf.convert_to_tensor(num_feature)这个之后就正常了
 https://stackoverflow.com/questions/33610685/in-tensorflow-what-is-the-difference-between-session-run-and-tensor-eval
 根据上面这个说法，可以使用tensor.eval()来单独运行某一个tensor的结果。前提是要用tf.InteractiveSession()或者with sess.as_default()来单独
 指定一个默认的session来保证图的正常运行
+
+model=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=False,input_shape=(None, None, 3))
+这是为了得到mobilenetv2
+    m=keras.models.Model(inputs=mobile.input,outputs=[mobile.get_layer('Conv1_relu').output,
+                                                      mobile.get_layer('block_2_add').output,
+                                                      mobile.get_layer('block_5_add').output,
+                                                      mobile.get_layer('block_12_add').output,
+                                                      mobile.get_layer('block_14_add').output])
+这是为了得到mobilenet运行中的几个输出，input不能写成我们希望的shape但是可以写成待定，这也是醉了。input需要写成mobile.net
+keras的padding只有zero padding 如果需要 replicate padding则要按以下例子进行
+# x = tf.convert_to_tensor([[[1, 2, 3], [4, 5, 6]],
+#                           [[10, 20, 30], [40, 50, 60]]])
+#
+# x = duplicate_last_row(duplicate_last_col(x))
+# with tf.Session() as sess:
+#     print(sess.run(x))
+# # [[[ 1  2  3  3]
+# #   [ 4  5  6  6]
+# #   [ 4  5  6  6]]
+# #
+# #  [[10 20 30 30]
+# #   [40 50 60 60]
+# #   [40 50 60 60]]]
+#
+#
+# # --------------
+# # Using as a Keras Layer:
+#
+# inputs = Input(shape=(5, 5, 3))
+# padded = Lambda(lambda t: duplicate_last_row(duplicate_last_col(t)))(inputs)
+#
+# model = Model(inputs=inputs, outputs=padded)
+# model.compile(optimizer="adam", loss='mse', metrics=['mse'])
+# batch = np.random.rand(2, 5, 5, 3)
+# x = model.predict(batch, batch_size=2)
+if step_per_epoch=0 or train_data give 0 images will cause  AttributeError: ‘ProgbarLogger’ object has no attribute ‘log_values’
+如果model输出有3个结果那么 model.compile()中的loss就得传一个［diceloss,diceloss,diceloss］这种list进去，metrics是每个epoch结束后进行validation用的
+所以得指定需要拿出输出指定的结果 ，这些结果应该和loss是一样的只不过loss是对应与特定的loss函数，metrics是对应accuracy，好像在model.fit_generate()里面要指定
+validation data
