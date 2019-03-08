@@ -1,0 +1,70 @@
+def new_biases(shape):
+    return tf.truncated_normal(shape, stddev=0.05)
+# b=tf.placeholder(tf.float32,shape=[100],name='p')
+
+
+a=new_biases(img_shape)
+
+session=tf.Session()
+
+session.run(tf.global_variables_initializer())
+print session.run(a)
+如上面这段程序所示，整个计算图在定义好之后要对计算图中的某一个节点进行操作，无论是执行一个算数操作还是对某个节点进行赋值操作，例如初始化变量tf.truncated_normal(shape, stddev=0.05)
+都需要告知并启动tensorflow的session.run 来对节点进行操作如（tf.global_variables_initializer()）如果要读取其中一个节点还需要一次session.run操作
+session.run(a)来读取a
+a=[True,True,True,False,False]
+b=np.array(a)
+print  (b==False)  #输出的是取反后的bool矩阵
+print  (a==False)   #输出一个False
+不知为何
+layer_shape = layer2.get_shape()
+num_feature = layer_shape[1:]
+num_feature=reduce(lambda x,y:x*y,num_feature)
+layer_fc= tf.reshape(layer2, [-1, num_feature])
+ Failed to convert object of type <type 'list'> to Tensor. Contents: [-1, Dimension(1764)]. Consider casting elements to a supported type.
+看上去像layer_fc中的num_feature需要一个tensor类型的数据，但是上面用reduce计算出来的结果是list类型，在加上
+num_feature=tf.convert_to_tensor(num_feature)这个之后就正常了
+或者用num_feature=layer_shape[1:].num_elements()
+这个直接代替上面那一堆，num_elements代替手工计算维度乘积的步骤
+https://stackoverflow.com/questions/33610685/in-tensorflow-what-is-the-difference-between-session-run-and-tensor-eval
+根据上面这个说法，可以使用tensor.eval()来单独运行某一个tensor的结果。前提是要用tf.InteractiveSession()或者with sess.as_default()来单独
+指定一个默认的session来保证图的正常运行
+
+model=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=False,input_shape=(None, None, 3))
+这是为了得到mobilenetv2
+    m=keras.models.Model(inputs=mobile.input,outputs=[mobile.get_layer('Conv1_relu').output,
+                                                      mobile.get_layer('block_2_add').output,
+                                                      mobile.get_layer('block_5_add').output,
+                                                      mobile.get_layer('block_12_add').output,
+                                                      mobile.get_layer('block_14_add').output])
+这是为了得到mobilenet运行中的几个输出，input不能写成我们希望的shape但是可以写成待定，这也是醉了。input需要写成mobile.net
+keras的padding只有zero padding 如果需要 replicate padding则要按以下例子进行
+# x = tf.convert_to_tensor([[[1, 2, 3], [4, 5, 6]],
+#                           [[10, 20, 30], [40, 50, 60]]])
+#
+# x = duplicate_last_row(duplicate_last_col(x))
+# with tf.Session() as sess:
+#     print(sess.run(x))
+# # [[[ 1  2  3  3]
+# #   [ 4  5  6  6]
+# #   [ 4  5  6  6]]
+# #
+# #  [[10 20 30 30]
+# #   [40 50 60 60]
+# #   [40 50 60 60]]]
+#
+#
+# # --------------
+# # Using as a Keras Layer:
+#
+# inputs = Input(shape=(5, 5, 3))
+# padded = Lambda(lambda t: duplicate_last_row(duplicate_last_col(t)))(inputs)
+#
+# model = Model(inputs=inputs, outputs=padded)
+# model.compile(optimizer="adam", loss='mse', metrics=['mse'])
+# batch = np.random.rand(2, 5, 5, 3)
+# x = model.predict(batch, batch_size=2)
+if step_per_epoch=0 or train_data give 0 images will cause  AttributeError: ‘ProgbarLogger’ object has no attribute ‘log_values’
+如果model输出有3个结果那么 model.compile()中的loss就得传一个［diceloss,diceloss,diceloss］这种list进去，metrics是每个epoch结束后进行validation用的
+所以得指定需要拿出输出指定的结果 ，这些结果应该和loss是一样的只不过loss是对应与特定的loss函数，metrics是对应accuracy，好像在model.fit_generate()里面要指定
+validation data

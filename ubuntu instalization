@@ -1,0 +1,14 @@
+1 在用u盘制作好启动镜像之后，bios中选择启动设备的时候可以看到两个usb启动选项，需要选有UEFI字样的。
+应该是rufus在制作时候增加了两种引导方式？不选UEFI的会有kerne
+panic
+2 安装拼音输入法可以用fcitx的，ibus的据说不再更新了。http://www.jianshu.com/p/905062d201a8 
+如这个网站所讲，如果os是英文的应该在 system settings-》language suport-》install/remove language 先装中文语言包，然后装
+fcitx的google pinyin输入法sudo apt-get install fcitx-googlepinyin 然后im-config配置fcitx 然后重启并在system setting
+中增加pinyin的切换选择
+3 双硬盘双os可能会出现装了ubuntu之后grub没有发现windows的启动项导致grub里面没有启动windows的选项
+而需要使用bios启动windows所在硬盘的现象。这个时候先在linux下装os-probe 然后sudo update-grub就可以将
+windows的启动选项加载grub中
+4 如果使用microsoft的键鼠有肯能出现鼠标一次滑动一页的现象，根据这个https://askubuntu.com/questions/47100/mouse-wheel-scrolling-too-fast 
+最后一个diaa sami的回答，下一个resetmsmice编译安装即可。需要先安装libusb 1.0.0-dev和libgtk2.0-dev
+https://ubuntuforums.org/showthread.php?t=2352568
+to solve   libnss3-nssdb : Depends: libnss3 (= 2:3.21-0ubuntu0.14.04.1) but 2:3.28.4-0ubuntu0.16.04.3 is to be installed

@@ -1,0 +1,16 @@
+在https://gcc.gnu.org/下载需要的gcc版本源码
+运行./contrib/downloads_prerequisites 下载依赖包包括mprf，m4，gmp等等
+如果升级版本跨越太大可能需要升级binutils。如何确认是否需要升级binutils需要看对应版本的gcc的changes信息中是否提到对binutils需求的最低版本，然后再看前一个版本呢是否有需求，一直往下走直到目前使用的版本。如果确实需要就安装。binutils需要用prefix指定安装目录否则会影响默认的安装目录/usr/loacl
+在gcc文件目录下./configure --prefix=/home/gary/gcc49 --enable-checking=release --enable-languages=c,c++ --enable-bootstrap --enable-long-long --disable-nls --enable-multilib --enable-lto进行配置。 这个prefix需要跟binutils的prefix目录一致
+由于编译需要用到32位运行库和其他运行库需要apt-get gcc-mutilib build-essential否则编译过程有可能出错。如果出错则首先考虑去查看config中的error信息
+安装glibc需要注意的是：
+strings /lib64/libc.so.6 |grep GLIBC 查看本地glibc的版本是否满足要求或者ldd -version，getconf -a |grep glibc -i (getconf -a获取全部系统信息|grep glibc -i 提取有glibc字符（-i 不分大小写）相关的行数)
+从http://www.gnu.org/software/libc/ 下载源代码。我下载的版本是2.14，链接地址是http://ftp.gnu.org/gnu/glibc/glibc-2.14.tar.gzc
+cd glibc-2.14
+mkdir build
+cd ./build
+../configure --prefix=/opt/glibc-2.14
+make
+make install
+然后需要在bashrc中LD_LIBRARY_PATH添加刚编译的glibc的文件夹中lib的具体位置。
+ /usr/lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found 是因为libstdc++太老，在LD_LIBRARY_PATH中添加gcc的lib64的路径

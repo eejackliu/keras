@@ -1,0 +1,206 @@
+https://askubuntu.com/questions/1400/how-do-i-optimize-the-os-for-ssds
+ssd optimizer
+安装cuda之前的操作
+sudo apt-get install freeglut3-dev build-essential libx11-dev libxmu-dev libxi-dev libgl1-mesa-glx libglu1-mesa libglu1-mesa-dev
+切tty用sudo service lightdm stop 关掉xserve
+安装cuda之后要重启
+如果出现登录之后被踢出来的循环登录现象要在/etc/modprobe.d/blacklist.conf里面加入下面五行（https://askubuntu.com/questions/481414/install-nvidia-driver-instead-of-nouveau）
+
+blacklist nouveau
+blacklist lbm-nouveau
+options nouveau modeset=0
+alias nouveau off
+alias lbm-nouveau off
+如果还是没有禁用nouveau就用sudo update-initramfs -u
+首先要安装bazel根据http://blog.csdn.net/masa_fish/article/details/54096996这个文章表明要先安装jdk。如果ppa没法装就去oracle下编译好的文件
+再设置环境变量export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_111/
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib:$JRE_HOME/lib
+export PATH=$JAVA_HOME/bin:$PATH
+http://www.dongcoder.com/detail-317869.html可以尝试使用mkl优化过的numpy
+为了便于管理应该安装anaconda，需注意conda creat --name tensor 建立名字为tensor的环境之后环境所在目录是不含有python的
+Anaconda的清华镜像
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+设置搜索时显示通道地址
+conda config --set show_channel_urls yes
+此时应该在这个环境中随便装个python的包，如numpy会自动装上python和一些必要的库，这样在编译tensorflow的时候就会自动找到python
+为了最大化cpu的性能建议安装intel的mkl数学库。去intel官网下载mkl之后运行install.sh，会让你选择su，sudo，还是user安装。安装之后
+http://blog.csdn.net/ray_up/article/details/38683383 需要按照这个网页中所讲的设置环境变量export PATH=/home/llm/intel/bin:$PATH
+source /home/llm/intel/bin/compilervars.sh -arch intel64 -platform linux
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/llm/intel/lib/intel64:/home/llm/intel/mkl/lib/intel64
+这样编译tensorflow的时候就不用询问是否要安装mkl。
+http://blog.csdn.net/xiaolantian/article/details/8824984
+如果要安装mpi需要在安装之后根据上面这个帖子内容的
+source /opt/intel/impi/4.0.3.008/ia32/bin/mpivars.sh
+在/etc/profile文件里添加环境变量PATH=$PATH:/opt/intel/impi/4.0.3.008/ia32/bin
+我们是64位的机子，应该把上面这个ia32改为对应的64位的
+如果只编译cpu则不需要mki这个并行计算的库，否则会因为没有cuda的配合而报错
+如果使用的系统自带gcc版本过低会造成
+https://developer.ibm.com/answers/questions/184266/libstdcso6-version-glibcxx-3420-not-found.html
+这个页面中所描述的libstdcso6找不到glibcxx-3420，这就需要在链接时运行库LD_LIBRARY_PATH增加高版本的gcc的std运行库。
+就可以成功安装bazel，建议用最新版本否则在编译时会提示错误，建于bazel古怪的错误提示方式，一旦出现错误那比装caffe还蛋疼
+Please specify the location of python. [Default is /usr/bin/python]:python的安装目录，如果有ananconda对应的env环境下的python会自动找对应的
+lib
+Please specify optimization flags to use during compilation when bazel option "--config=opt" is specified [Default is -march=native]:
+下一步编译时候的命令
+
+Do you wish to build TensorFlow with jemalloc as malloc support? [Y/n]: y   用jemalloc代替malloc  
+jemalloc as malloc support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with Google Cloud Platform support? [Y/n]: n  n谷歌云，连不上关掉
+No Google Cloud Platform support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with Hadoop File System support? [Y/n]: n
+No Hadoop File System support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with Amazon S3 File System support? [Y/n]: n
+No Amazon S3 File System support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with XLA JIT support? [y/N]: n
+No XLA JIT support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with GDR support? [y/N]: n
+No GDR support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with VERBS support? [y/N]: n
+No VERBS support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with OpenCL SYCL support? [y/N]: n    n不要选，否则后面要制定opencl的安装位置
+No OpenCL SYCL support will be enabled for TensorFlow.
+
+Do you wish to build TensorFlow with CUDA support? [y/N]: y
+CUDA support will be enabled for TensorFlow.
+
+Please specify the CUDA SDK version you want to use, e.g. 7.0. [Leave empty to default to CUDA 9.0]: 
+
+
+Please specify the location where CUDA 9.0 toolkit is installed. Refer to README.md for more details. [Default is /usr/local/cuda]: 
+
+
+Please specify the cuDNN version you want to use. [Leave empty to default to cuDNN 7.0]: 
+
+
+Please specify the location where cuDNN 7 library is installed. Refer to README.md for more details. [Default is /usr/local/cuda]:
+
+
+Please specify a list of comma-separated Cuda compute capabilities you want to build with.
+You can find the compute capability of your device at: https://developer.nvidia.com/cuda-gpus.
+Please note that each additional compute capability significantly increases your build time and binary size. [Default is: 6.1,6.1,6.1,6.1]
+
+
+Do you want to use clang as CUDA compiler? [y/N]: n
+nvcc will be used as CUDA compiler.
+
+Please specify which gcc should be used by nvcc as the host compiler. [Default is /usr/bin/gcc]: 
+
+
+Do you wish to build TensorFlow with MPI support? [y/N]: n
+No MPI support will be enabled for TensorFlow.
+
+Please specify optimization flags to use during compilation when bazel option "--config=opt" is specified [Default is -march=native]: 
+
+
+Add "--config=mkl" to your bazel command to build with MKL support.
+Please note that MKL on MacOS or windows is still not supported.
+If you would like to use a local MKL instead of downloading, please set the environment variable "TF_MKL_ROOT" every time before build.
+
+Would you like to interactively configure ./WORKSPACE for Android builds? [y/N]: n
+Not configuring the WORKSPACE for Android builds.
+
+Configuration finished
+
+
+
+
+
+
+
+http://www.shizhuolin.com/2017/05/28/1407.html
+编译
+bazel build --config=opt --config=mkl --copt="-DEIGEN_USE_VML" //tensorflow/tools/pip_package:build_pip_package
+生成python包
+bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+安装
+pip install /tmp/tensorflow_pkg/tensorflow-1.1.0-cp34-cp34m-linux_x86_64.whl
+如果出现找不到libiomp5.so 
+可以尝试https://software.intel.com/en-us/articles/intel-mkl-dnn-part-1-library-overview-and-installation
+使用import tensorflow来测试编译的python接口时如果出现ImportError: No module named tensorflow.python.platform
+如果是在刚才的编译目录下来执行python的则有可能会出现这个错误。这时只要换个目录 然后import python就行
+
+用gpu编译有可能出现https://github.com/tensorflow/tensorflow/issues/9634的问题
+cuda_configure.bzl makes bad symlink for: cuda/include/cudnn.h --> cuda/include/include/cudnn.h
+根据文章中的提示可以用
+（1）
+genrules.append(_symlink_genrule_for_dir(repository_ctx, None, "",
+        "cudnn-include", [cudnn_header_dir + "/cudnn.h"], ["include/cudnn.h"]))
+to
+
+genrules.append(_symlink_genrule_for_dir(repository_ctx, None, "",
+        "cudnn-include", [cudnn_header_dir + "/cudnn.h"], ["cudnn.h"]))
+（2）
+In the file tensorflow/stream_executor/cuda/cuda_dnn.cc
+Change:
+#include "cuda/include/cudnn.h"
+into:
+#include "cuda/cudnn.h"
+这两个地方进行修改来解决问题，但是其他地方又挂了，最后用cpu编的
+
+http://blog.csdn.net/masa_fish/article/details/54585537介绍了用android studio如何编译tensorflow的android的demon的方法
+需要注意的有
+ 在项目的build.gradle中要加入'--verbose_failures',  否则在gradle console中无法看的看到error的具体信息只能看到有error产生
+（1)
+打开 ~/tensorflow/examples/android/下的 build.gradle文件
+将第一行代码 def bazel_location = 'usr/local/bin/bazel' 替换为自己的bazel安装路径。这个是bazel下面bin里那个bazel比如~/.bazel/bin/bazel
+(2)
+将下方的 compileSdkVersion和 buildToolsVersion 更改为自己电脑上安装的版本.不知道的可以用as新建一个项目去看那个项目地下的build.gradel里面有讲
+（3）
+https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/android里面有提到需要在tensorflow最外面的文件夹里将WORKSPACE中做如下修改
+在tensorflow的根目录下，找到WORKSPACE文件。打开文件， 上方有两段包含 android_sdk_repository和 android_ndk_repository的内容（该段内容已经加了#被注释掉了），将这两段内容在文件中复制一遍，并将复制后的内容反注释掉。然后：
+
+a) 分别将sdk path和 ndk path更改为自己安装的SDK和NDK路径（例如我的是tensorflow根目录下的相对路径）
+
+b) 将sdk api level更改为自己电脑中安装的最高版本
+
+c) 将sdk的build_tools_version更改为自己安装的版本
+
+android_sdk_repository(
+    name = "androidsdk",
+    api_level = 25,
+    # Ensure that you have the build_tools_version below installed in the
+    # SDK manager as it updates periodically.
+    build_tools_version = "25.0.3",
+    # Replace with path to Android SDK on your system
+    path = "/home/local/SPREADTRUM/gary.liu/Android/Sdk",
+)
+
+# Android NDK r12b is recommended (higher may cause issues with Bazel)
+android_ndk_repository(
+    name="androidndk",
+    path="/home/local/SPREADTRUM/gary.liu/tensorflow/android-ndk-r12b",
+    # This needs to be 14 or higher to compile TensorFlow.
+    # Note that the NDK version is not the API level.
+    api_level=14)
+
+#android_sdk_repository(
+#    name = "androidsdk",
+#    api_level = 23,
+#    # Ensure that you have the build_tools_version below installed in the
+#    # SDK manager as it updates periodically.
+#    build_tools_version = "25.0.2",
+#    # Replace with path to Android SDK on your system
+#    path = "<PATH_TO_SDK>",
+#)
+#
+# Android NDK r12b is recommended (higher may cause issues with Bazel)
+#android_ndk_repository(
+#    name="androidndk",
+#    path="<PATH_TO_NDK>",
+#    # This needs to be 14 or higher to compile TensorFlow.
+#    # Note that the NDK version is not the API level.
+#    api_level=14)
+此外需要注意在这篇文章编辑的时候，如果使用14b的NDK会出现ERROR: /home/local/SPREADTRUM/gary.liu/tensorflow/tensorflow/core/kernels/BUILD:4329:1: C++ compilation of rule '//tensorflow/core/kernels:android_tensorflow_kernels' failed: clang failed: error executing command 
+tensorflow/core/kernels/tensor_array_ops.cc:1266:54: error: non-constant-expression cannot be narrowed from type 'int64' (aka 'long long') to 'int' in initializer list [-Wc++11-narrowing]
+这种错误。如https://github.com/tensorflow/tensorflow/issues/9280这篇文章中所说与ndk版本有关，在降级到ndk12之后可以成功编译并且安装在avd emulator上
+如果出现libstdc++.so.6: version `GLIBCXX_3.4.20' not found
+参照https://developer.ibm.com/answers/questions/184266/libstdcso6-version-glibcxx-3420-not-found.html
+自行编译高版本gcc并用其lib库
