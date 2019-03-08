@@ -1,0 +1,31 @@
+def new_biases(shape):
+    return tf.truncated_normal(shape, stddev=0.05)
+# b=tf.placeholder(tf.float32,shape=[100],name='p')
+
+
+a=new_biases(img_shape)
+
+session=tf.Session()
+
+session.run(tf.global_variables_initializer())
+print session.run(a)
+如上面这段程序所示，整个计算图在定义好之后要对计算图中的某一个节点进行操作，无论是执行一个算数操作还是对某个节点进行赋值操作，例如初始化变量tf.truncated_normal(shape, stddev=0.05)
+都需要告知并启动tensorflow的session.run 来对节点进行操作如（tf.global_variables_initializer()）如果要读取其中一个节点还需要一次session.run操作
+session.run(a)来读取a
+a=[True,True,True,False,False]
+b=np.array(a)
+print  (b==False)  #输出的是取反后的bool矩阵
+print  (a==False)   #输出一个False
+不知为何
+layer_shape = layer2.get_shape()
+num_feature = layer_shape[1:]
+num_feature=reduce(lambda x,y:x*y,num_feature)
+layer_fc= tf.reshape(layer2, [-1, num_feature])
+ Failed to convert object of type <type 'list'> to Tensor. Contents: [-1, Dimension(1764)]. Consider casting elements to a supported type.
+看上去像layer_fc中的num_feature需要一个tensor类型的数据，但是上面用reduce计算出来的结果是list类型，在加上
+num_feature=tf.convert_to_tensor(num_feature)这个之后就正常了
+或者用num_feature=layer_shape[1:].num_elements()
+这个直接代替上面那一堆，num_elements代替手工计算维度乘积的步骤
+https://stackoverflow.com/questions/33610685/in-tensorflow-what-is-the-difference-between-session-run-and-tensor-eval
+根据上面这个说法，可以使用tensor.eval()来单独运行某一个tensor的结果。前提是要用tf.InteractiveSession()或者with sess.as_default()来单独
+指定一个默认的session来保证图的正常运行
