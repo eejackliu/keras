@@ -1,0 +1,2 @@
+android studio 上的tensorflow的jar包需要加入app／libs下面，并且右键add as lib 这样才能被as识别，代码中需要import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+使用的pb文件需要在app/src/main/assets/下面，没有就新建。能否使用和权限无关，位置最重要
