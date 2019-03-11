@@ -5,7 +5,7 @@ from PIL import Image as image
 import numpy as np
 voc_colormap = [[0, 0, 0], [245,222,179]]
 class keras_data(keras.utils.Sequence):
-    def __init__(self,root='data/',image_set='train',batch_size=1):
+    def __init__(self,root='data/',image_set='train',batch_size=2):
         super(keras_data,self).__init__()
         self.root=os.path.expanduser(root)
         self.image_set=image_set

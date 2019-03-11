@@ -1,11 +1,12 @@
 import tensorflow as tf
 
-from tensorflow import keras
-# import keras
+# from tensorflow import keras
+import keras
 from data_keras import label_acc_score,keras_data
 import glob
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow.keras.layers as layer
 # img_input=keras.layers.Input(shape=(None,None,3),name='main_input')
 # # import Input, merge, Conv2D, ZeroPadding2D, UpSampling2D, Dense, concatenate, Conv2DTranspose
@@ -65,8 +66,9 @@ def nest():
     up4_1=keras.layers.Conv2DTranspose(48,(2,2),strides=(2,2),name='l4_1',padding='same')(midd)
     # up4_1=keras.layers.Cropping2D(([0,0],[0,1]))(up4_1)
     # up4_1=keras.layers.Lambda(lambda t:duplicate_last_col(t))(up4_1)
-    up4_1=keras.layers.Lambda(duplicate_last_col)(up4_1)
+    # up4_1=keras.layers.Lambda(duplicate_last_col)(up4_1)
     up4_1=keras.layers.concatenate([up4_1,l4_0],axis=3)
+
     l4_1=standard_unit(up4_1,'l4',48)
     up3_1=keras.layers.Conv2DTranspose(16,(2,2),strides=(2,2),name='l3_1',padding='same')(l4_0)
     up3_1=keras.layers.concatenate([up3_1,l3_0],axis=3)
@@ -133,6 +135,21 @@ def iou(y_true,y_pred):
     y_true=(y_true>0.5)
     y_true=keras.backend.cast(y_true, dtype='float32')
     return keras.backend.sum(y_true*y_pred)/(keras.backend.sum(y_pred),keras.backend.sum(y_true)-keras.backend.sum(y_true*y_pred)+0.0001)
+def picture(pre_numpy,img_numpy,mask_numpy):
+    #pre_numpy has shape num,height,width,channel
+    voc_colormap=np.array([[0, 0, 0], [245,222,179]])
+    num=len(img_numpy)
+    target=(pre_numpy>0.5).squeeze().astype(int)
+    # mean,std=np.array((0.485, 0.456, 0.406)),np.array((0.229, 0.224, 0.225))
+    # img=img_numpy*std+mean
+    img=img_numpy.squeeze()
+    mask=voc_colormap[mask_numpy.squeeze().astype(int)]
+    tar=voc_colormap[target]
+    tmp=np.concatenate((img,tar,mask),axis=0)
+    for i,j in enumerate(tmp,1):
+        plt.subplot(3,num,i)
+        plt.imshow(j)
+    plt.show()
 batch_size=8
 train_data=keras_data(batch_size=batch_size)
 val_data=keras_data(image_set='test')
@@ -156,52 +173,61 @@ metrics={
 model=nest()
 model.compile(optimizer=optim,loss=[diceloss,diceloss,diceloss,diceloss,diceloss,] ,loss_weights=[0.2,0.2,0.2,0.2,0.2],metrics=metrics)
 
-model.fit_generator(train_data,steps_per_epoch=steps,epochs=1,use_multiprocessing=True, verbose=1,workers=2,validation_data=val_data,validation_steps=1)
+model.fit_generator(train_data,steps_per_epoch=steps,epochs=1,use_multiprocessing=True, verbose=2,workers=2,validation_data=val_data,validation_steps=50)
+
+
+keras.models.save_model( 'upp.h5',include_optimizer=False)
+
+
+model=keras.models.load_model('upp.h5')
+q,w=next(iter(val_data))# mask is []*5
+tmp=model.predict(q)
+picture(tmp[4],q,w[0])
+
+converter=tf.lite.TFLiteConverter.from_keras_model_file('upp.h5',input_shapes={'main_input':[1,320,240,3]})
+tflite_model = converter.convert()
+open("keras.tflite", "wb").write(tflite_model)
 
 
 
 
-# keras.models.save_model(model, 'upp.h5')
-# converter=tf.lite.TFLiteConverter.from_keras_model_file('upp.h5')
-# tflite_model = converter.convert()
-# open("converted_model.tflite", "wb").write(tflite_model)
-
-output_names = [node.op.name for node in model.outputs]
-sess = tf.keras.backend.get_session()
-frozen_def = tf.graph_util.convert_variables_to_constants(
-    sess, sess.graph_def, output_names)
-inputs=keras.layers.Input(shape=(320,240,3),name='main_input')
-# tflite_model = tf.lite.toco_convert(
-#     frozen_def,[inputs] , output_names)
-tflite_model=tf.lite.TFLiteConverter.from_frozen_graph(frozen_def,[inputs],output_names)
-conv=tflite_model.convert()
-
-open("converted_model.tflite", "wb").write(conv)
 
 
 
-https://www.tensorflow.org/api_docs/python/tf/lite/TFLiteConverter
-https://stackoverflow.com/questions/50581883/how-do-i-export-a-tensorflow-model-as-a-tflite-file
-https://stackoverflow.com/questions/52400043/how-to-get-toco-to-work-with-shape-none-24-24-3?rq=1
-https://medium.com/@xianbao.qian/convert-keras-model-to-tflite-e2bdf28ee2d2
 
 
-Step 1: Create a Keras model (which you might already have)
-model = create_my_keras_model()
-model.compile(loss, optimizer)
-model.fit_generator(dataset)
-Step 2: Convert inference model
-output_names = [node.op.name for node in model.outputs]
-sess = tf.keras.backend.get_session()
-frozen_def = tf.graph_util.convert_variables_to_constants(
-    sess, sess.graph_def, output_names)
-Step 3: Create tflite model
-# You might want to do some hack to add port number to
-# output_names here, e.g. convert add to add:0
-tflite_model = tf.contrib.lite.toco_convert(
-    frozen_def, [inputs], output_names)
-with tf.gfile.GFile(tflite_graph, 'wb') as f:
-    f.write(tflite_model)
+
+
+
+
+
+
+
+
+
+
+# https://www.tensorflow.org/api_docs/python/tf/lite/TFLiteConverter
+# https://stackoverflow.com/questions/50581883/how-do-i-export-a-tensorflow-model-as-a-tflite-file
+# https://stackoverflow.com/questions/52400043/how-to-get-toco-to-work-with-shape-none-24-24-3?rq=1
+# https://medium.com/@xianbao.qian/convert-keras-model-to-tflite-e2bdf28ee2d2
+
+
+# Step 1: Create a Keras model (which you might already have)
+# model = create_my_keras_model()
+# model.compile(loss, optimizer)
+# model.fit_generator(dataset)
+# Step 2: Convert inference model
+# output_names = [node.op.name for node in model.outputs]
+# sess = tf.keras.backend.get_session()
+# frozen_def = tf.graph_util.convert_variables_to_constants(
+#     sess, sess.graph_def, output_names)
+# Step 3: Create tflite model
+# # You might want to do some hack to add port number to
+# # output_names here, e.g. convert add to add:0
+# tflite_model = tf.contrib.lite.toco_convert(
+#     frozen_def, [inputs], output_names)
+# with tf.gfile.GFile(tflite_graph, 'wb') as f:
+#     f.write(tflite_model)
 
 
 
