@@ -301,3 +301,199 @@ ap,iou,hist,tmp=label_acc_score(mask,pred,2)
 # batch = np.random.rand(2, 5, 5, 3)
 # x = model.predict(batch, batch_size=2)
 # print(x.shape)
+
+
+
+CameraActivity
+package com.example.android.tflitecamerademo;
+
+package com.example.android.tflitecamerademo;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.io.InputStream;
+
+/** Main {@code Activity} class for the Camera app. */
+public class CameraActivity extends Activity {
+  private AutoFitTextureView textureView;
+  private ImageClassifier classifier;
+  private TextView textView;
+  private static final String TAG = "TfLiteCameraDemo";
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.camera);
+    ImageView imageView=findViewById(R.id.texture);
+    textView = (TextView) findViewById(R.id.text);
+    Bitmap bitmap=getBitmapFromAsset(this,"mouse.png");
+    imageView.setImageBitmap(bitmap);
+    try {
+      // create either a new ImageClassifierQuantizedMobileNet or an ImageClassifierFloatInception
+      classifier = new ImageClassifierQuantizedMobileNet(this);
+//      classifier = new ImageClassifierFloatInception(this);
+//      classifier= new  ImageClassifierResnet(this);
+//      classifier=new ImageClassifiersqueeze(this);
+    } catch (IOException e) {
+      Log.e(TAG, "Failed to initialize an image classifier.", e);
+    }
+//    for (int i=0;i<3;i++) {
+//      classifyFrame();
+//     Log.e(TAG,"test");
+//    }
+    classifyFrame();
+
+
+//    if (null == savedInstanceState) {
+//      getFragmentManager()
+//          .beginTransaction()
+//          .replace(R.id.container, Camera2BasicFragment.newInstance())
+//          .commit();
+//    }
+  }
+  private void classifyFrame() {
+//    if (classifier == null || getActivity() == null || cameraDevice == null)
+    if(classifier==null)
+    {
+      showToast("Uninitialized Classifier or invalid context.");
+      return;
+    }
+
+//    Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+    Bitmap bitmap=getBitmapFromAsset(this,"mouse.png");
+    bitmap=Bitmap.createScaledBitmap(bitmap,classifier.getImageSizeX(),classifier.getImageSizeY(),false);
+    String textToShow = classifier.classifyFrame(bitmap);
+//    bitmap.recycle();
+    showToast(textToShow);
+  }
+  private void showToast(final String text) {
+
+                  textView.setText(text);
+
+
+  }
+  public static Bitmap getBitmapFromAsset(Context context, String filePath) {
+    AssetManager assetManager = context.getAssets();
+
+    InputStream istr;
+    Bitmap bitmap = null;
+    try {
+      istr = assetManager.open(filePath);
+      bitmap = BitmapFactory.decodeStream(istr);
+    } catch (IOException e) {
+      // handle exception
+    }
+
+    return bitmap;
+  }
+}
+
+
+
+
+
+
+
+ImageClassifierResnet
+
+package com.example.android.tflitecamerademo;
+
+import android.app.Activity;
+
+import java.io.IOException;
+
+public class ImageClassifierResnet extends ImageClassifier {
+
+    /**
+     * The inception net requires additional normalization of the used input.
+     */
+    private static final int IMAGE_MEAN = 128;
+    private static final float IMAGE_STD = 128.0f;
+
+    /**
+     * An array to hold inference results, to be feed into Tensorflow Lite as outputs.
+     * This isn't part of the super class, because we need a primitive array here.
+     */
+    private float[][] labelProbArray = null;
+
+    /**
+     * Initializes an {@code ImageClassifier}.
+     *
+     * @param activity
+     */
+    ImageClassifierResnet(Activity activity) throws IOException {
+        super(activity);
+        labelProbArray = new float[1][getNumLabels()];
+    }
+
+    @Override
+    protected String getModelPath() {
+        // you can download this file from
+        // https://storage.googleapis.com/download.tensorflow.org/models/tflite/inception_v3_slim_2016_android_2017_11_10.zip
+        return "squeezenet.tflite";
+//    return "inceptionv3_non_slim_2015.tflite";
+    }
+
+    @Override
+    protected String getLabelPath() {
+
+        return "squeeze.txt";
+//      return "imagenet_2015_label_strings.txt";
+
+    }
+
+    @Override
+    protected int getImageSizeX() {
+        return 224;
+    }
+
+    @Override
+    protected int getImageSizeY() {
+        return 224;
+    }
+
+    @Override
+    protected int getNumBytesPerChannel() {
+        // a 32bit float value requires 4 bytes
+        return 4;
+    }
+
+    @Override
+    protected void addPixelValue(int pixelValue) {
+//        imgData.putFloat(((pixelValue >> 16) & 0xFF));
+//        imgData.putFloat (((pixelValue >> 8) & 0xFF));
+//        imgData.putFloat ((pixelValue & 0xFF));
+        imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+        imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+        imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+    }
+
+    @Override
+    protected float getProbability(int labelIndex) {
+        return labelProbArray[0][labelIndex];
+    }
+
+    @Override
+    protected void setProbability(int labelIndex, Number value) {
+        labelProbArray[0][labelIndex] = value.floatValue();
+    }
+
+    @Override
+    protected float getNormalizedProbability(int labelIndex) {
+        // TODO the following value isn't in [0,1] yet, but may be greater. Why?
+        return getProbability(labelIndex);
+    }
+
+    @Override
+    protected void runInference() {
+        tflite.run(imgData, labelProbArray);
+    }
+}
