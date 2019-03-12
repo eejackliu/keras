@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-# from tensorflow import keras
-import keras
+from tensorflow import keras
+# import keras
 from data_keras import label_acc_score,keras_data
 import glob
 import math
@@ -30,7 +30,7 @@ def standard_unit(input_tensor, stage, nb_filter, kernel_size=3):
 def final_unit(input_tensor, stage, nb_filter, kernel_size=3):
     x = keras.layers.Conv2D(nb_filter, (kernel_size, kernel_size), activation=act, kernel_initializer = 'he_normal', padding='same', kernel_regularizer=keras.regularizers.l2(1e-4))(input_tensor)
     x=keras.layers.BatchNormalization()(x)
-    x=keras.layers.Conv2D(1,(1,1), name='conv'+stage+'')(x)
+    x=keras.layers.Conv2D(1,(1,1),activation=act,kernel_initializer = 'he_normal', name='conv'+stage+'')(x)
     return x
 def duplicate_last_col(tensor):
     return tf.concat((tensor, tf.expand_dims(tensor[:, :, -1, ...], 2)), axis=2)
@@ -43,13 +43,14 @@ def nest():
     # l4_0=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_12_add').output)#96
     # midd=keras.models.Model(inputs=img_input, outputs=mobile.get_layer('block_14_add').output)#160
     img_input=keras.layers.Input(shape=(None,None,3),name='main_input')
-    x=img_input
     mobile=keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet', include_top=False,input_shape=(None, None, 3))
 
     vgg=keras.applications.vgg16.VGG16(weights='imagenet', include_top=False,input_shape=(None, None, 3),input_tensor=img_input)
 
-    l0_0=vgg.layers[2].output
+    v=keras.models.Model(inputs=vgg.input,outputs=vgg.get_layer('block1_conv2').output)
+    l0_0=v(img_input)
     x=keras.layers.Conv2D(3,(1,1),activation='relu',name='changesize',padding='same')(l0_0)
+    x=keras.layers.BatchNormalization()(x)
     # ml1_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('Conv1_relu').output)  #32
     # ml2_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_2_add').output) #24
     # ml3_0=keras.models.Model(inputs=mobile.input, outputs=mobile.get_layer('block_5_add').output) #32
@@ -65,8 +66,9 @@ def nest():
 
     up4_1=keras.layers.Conv2DTranspose(48,(2,2),strides=(2,2),name='l4_1',padding='same')(midd)
     # up4_1=keras.layers.Cropping2D(([0,0],[0,1]))(up4_1)
-    # up4_1=keras.layers.Lambda(lambda t:duplicate_last_col(t))(up4_1)
+    up4_1=keras.layers.Lambda(lambda t:duplicate_last_col(t))(up4_1)
     # up4_1=keras.layers.Lambda(duplicate_last_col)(up4_1)
+    # up4_1 = keras.layers.ZeroPadding2D(([0, 0], [0, 1]))(up4_1)
     up4_1=keras.layers.concatenate([up4_1,l4_0],axis=3)
 
     l4_1=standard_unit(up4_1,'l4',48)
@@ -142,7 +144,7 @@ def picture(pre_numpy,img_numpy,mask_numpy):
     target=(pre_numpy>0.5).squeeze().astype(int)
     # mean,std=np.array((0.485, 0.456, 0.406)),np.array((0.229, 0.224, 0.225))
     # img=img_numpy*std+mean
-    img=img_numpy.squeeze()
+    img=img_numpy.squeeze().astype(int)
     mask=voc_colormap[mask_numpy.squeeze().astype(int)]
     tar=voc_colormap[target]
     tmp=np.concatenate((img,tar,mask),axis=0)
@@ -150,7 +152,8 @@ def picture(pre_numpy,img_numpy,mask_numpy):
         plt.subplot(3,num,i)
         plt.imshow(j)
     plt.show()
-batch_size=8
+
+batch_size=2
 train_data=keras_data(batch_size=batch_size)
 val_data=keras_data(image_set='test')
 optim=keras.optimizers.Adam()
@@ -171,23 +174,42 @@ metrics={
     'convl0_5':iou,
 }
 model=nest()
-model.compile(optimizer=optim,loss=[diceloss,diceloss,diceloss,diceloss,diceloss,] ,loss_weights=[0.2,0.2,0.2,0.2,0.2],metrics=metrics)
+model.compile(optimizer=optim,loss=[diceloss,diceloss,diceloss,diceloss,diceloss,] ,loss_weights=[0.2,0.2,0.2,0.2,0.2])
+model.fit_generator(train_data,steps_per_epoch=steps,epochs=20,use_multiprocessing=True, verbose=2,workers=2)
+keras.models.save_model(model, 'unet.h5',include_optimizer=False)
+# #
 
-model.fit_generator(train_data,steps_per_epoch=steps,epochs=1,use_multiprocessing=True, verbose=2,workers=2,validation_data=val_data,validation_steps=50)
+def test(model):
+    img=[]
+    pred=[]
+    mask=[]
+    l1_list=[]
+    l2_list=[]
+    l3_list=[]
+    l4_list=[]
+    l5_list=[]
+    for image,mask_img in val_data:
+        l1,l2,l3,l4,\
+        l5=model.predict(image)
+        label=(l5>0.5).squeeze().astype(int)
+        l1_list.append(l1)
+        l2_list.append(l2)
+        l3_list.append(l3)
+        l4_list.append(l4)
+        l5_list.append(l5)
+        pred.append(label)
+        img.append(image)
+        mask.append(mask_img)
+    return np.concatenate(img,axis=0),np.concatenate(pred,axis=0),np.concatenate(mask,axis=0),[l1_list,l2_list,l3_list,l4_list,l5_list]
 
+model=keras.models.load_model('unet.h5')
+img,pred,mask,l=test(model)
+ap,iou,hist,tmp=label_acc_score(mask,pred,2)
 
-keras.models.save_model( 'upp.h5',include_optimizer=False)
-
-
-model=keras.models.load_model('upp.h5')
-q,w=next(iter(val_data))# mask is []*5
-tmp=model.predict(q)
-picture(tmp[4],q,w[0])
-
-converter=tf.lite.TFLiteConverter.from_keras_model_file('upp.h5',input_shapes={'main_input':[1,320,240,3]})
-tflite_model = converter.convert()
-open("keras.tflite", "wb").write(tflite_model)
-
+# converter=tf.lite.TFLiteConverter.from_keras_model_file('unet.h5',input_shapes={'main_input':[1,320,240,3]})
+# tflite_model = converter.convert()
+# open("unet_second.tflite", "wb").write(tflite_model)
+#
 
 
 

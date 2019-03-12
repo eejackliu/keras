@@ -28,9 +28,11 @@ class keras_data(keras.utils.Sequence):
            mask=self.mask[item*self.batch_size:(item+1)*self.batch_size]
            mask=np.array([np.array(image.open(i))/255 for i in mask])
            mask_t=mask[:,:,:,None]
-           img_t=np.array([np.array(image.open(i).convert('RGB')) for i in img])
+           img_t=np.array([np.array(image.open(i).convert('RGB')) for i in img]).astype(np.float32)
         except Exception as e:
             print(e)
+        if self.image_set=='test':
+            return img_t,mask_t
         return img_t,[mask_t]*5
 
 
@@ -42,7 +44,7 @@ def label_acc_score(label_true,label_pred,num_cls=2):
     hist_matrix=np.zeros((num_cls,num_cls))
     tmp=0
     for i,j in zip(label_true,label_pred):
-        hist_matrix+=hist(i.cpu().numpy().flatten(),j.cpu().numpy().flatten(),num_cls)
+        hist_matrix+=hist(i.flatten(),j.flatten(),num_cls)
         tmp+=1
     diag=np.diag(hist_matrix)
     # acc=diag/hist_matrix.sum()
