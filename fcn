@@ -3,7 +3,7 @@ Dice loss 对于二分类效果明显，bceloss需要尝试，链接1,2是各种
 对于（320，240）放缩五次之后就会面临上采样和原来大小不一的问题。目前看来采用较大的上采样值然后crop掉（transpose conv 特定，bilinear只能成倍数放大）
 比事后pad（（0，0，1，0）这个是在垂直方向pad1个像素）要好一点点，需要证实。
 loss的实现影响最大，因为背景作为others的预测不能主导loss的值，crossentrpy把背景算在loss中，这样可能会陷入局部最小（全部预测为背景也是一种解）
-
+keras版本的mobilenet是valid，midd层会少1个像素，padding0比padding reflect效果差5%
 
 论文state of art
 fcn 全卷积，以及 最后的实验证明类别比例与照片比例不一致是不影响结果的
@@ -13,6 +13,7 @@ TernausNet: U-Net with VGG11 Encoder Pre-Trained on ImageNet for Image Segmentat
 The Importance of Skip Connections in Biomedical Image Segmentation这里面提到他们使用dice loss会曾在边界缺失的问题，bce则会是模糊的状态
 使用0.2dropout的dice loss效果要好
 need to do：
+上采样中的conv可以尝试用mobilenet中的深度卷积和channel卷积代替
 模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
 使用sequeezenet来构建，conv层有没有pading=1的影响。
 unet论文中使用overlap-tile方式把大的图片（3000＊3000）切成小的照片（本质上是同样物体的重复出现）但是且出来的照片会有一圈padding，这些padding来自
