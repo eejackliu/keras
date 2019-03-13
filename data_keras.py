@@ -23,11 +23,15 @@ class keras_data(keras.utils.Sequence):
     def __len__(self):
         return math.ceil(len(self.file_name)/self.batch_size)
     def __getitem__(self, item):
+        mean,std=np.array([0.485, 0.456, 0.406]),np.array((0.229, 0.224, 0.225))
+        mean,std=np.array([123, 117, 104]),np.array()
         try:
            img=self.image[item*self.batch_size:(item+1)*self.batch_size]
            mask=self.mask[item*self.batch_size:(item+1)*self.batch_size]
            mask=np.array([np.array(image.open(i))/255 for i in mask])
            mask_t=mask[:,:,:,None]
+           # img_t=np.array([np.array(image.open(i).convert('RGB')) for i in img]).astype(np.float32)/255.
+           # img_t=(img_t-mean)/std
            img_t=np.array([np.array(image.open(i).convert('RGB')) for i in img]).astype(np.float32)
         except Exception as e:
             print(e)
