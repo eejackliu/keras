@@ -3,7 +3,23 @@ Dice loss 对于二分类效果明显，bceloss需要尝试，链接1,2是各种
 对于（320，240）放缩五次之后就会面临上采样和原来大小不一的问题。目前看来采用较大的上采样值然后crop掉（transpose conv 特定，bilinear只能成倍数放大）
 比事后pad（（0，0，1，0）这个是在垂直方向pad1个像素）要好一点点，需要证实。
 loss的实现影响最大，因为背景作为others的预测不能主导loss的值，crossentrpy把背景算在loss中，这样可能会陷入局部最小（全部预测为背景也是一种解）
-keras版本的mobilenet是valid，midd层会少1个像素，padding0比padding reflect效果差5%
+keras版本的mobilenet是valid，midd层会少1个像素，padding0比padding reflect效果差5% tf.keras 和 keras 只能二选一，tflie-from-keras用keras
+的model能跑通
+nout= (nin+2p-k)/s +1 这个是计算conv输出面积的，同时也是计算这个维度中元素（feature）的个数的，在计算感受野（receptive field）的时候需要用到
+jump这个概念，其实就是后一个卷及比前一个卷及平移几个元素，第一层这个值为1，下一层的jump=jump（本层的）＊stride（conv的stride）
+下一层的rceptive field=r(本层 receptive）+(kernel size（本层）-1)*jump(本层） 注意 jump是累进的，vgg中主要是pooling累进jump的值
+感受野特指这个面积大小的元素会最终影响结果中的一个元素
+A guide to receptive field arithmetic for Convolutional Neural Networks这个论文里面也显示了尽管最后一层橘颜色的元素的感受野大小是7＊7，和
+输入一样大，但是那一层仍然有四个元素，感受野类似kernel，输入太小还可以加padding（这里指的是等效padding，具体来源于每一层的conv的padding，因为在
+计算receptive field的时候没考虑过进行convolution的元素输入来自哪里，只考虑了几个kernel叠加起来相当与几乘几的conv，所以这么算也只是等效kernel
+实际的感受野没有那么大，除非把每一层的用于‘SAME’的padding取消，实际感受野才会和计算的一样，如果padding用reflect（不知道这样padding的元素和输出相关
+这种假的感受野会不会有助于增加对图像的感知）
+http://zike.io/posts/calculate-receptive-field-for-vgg-16/这个页面详细计算了累计receptive filed的计算式
+deep lab 中的这句话 
+ After the first fully connected layer has 4,096 fil-ters of large 7 × 7 spatial size and becomes the computational bottleneck in our dense score map
+computation. 他是指把那7＊7＊512 个特征变成fc中的4096个参数需要 4096个7＊7那么大的连接网络
+
+
 
 论文state of art
 fcn 全卷积，以及 最后的实验证明类别比例与照片比例不一致是不影响结果的
@@ -12,6 +28,9 @@ TernausNet: U-Net with VGG11 Encoder Pre-Trained on ImageNet for Image Segmentat
 而且同一倍数的层中，上采样是下采样倍数的一半。这在人像上比unet那种镜像对称的效果好（nest形式中三层高5%，五层的高2%）
 The Importance of Skip Connections in Biomedical Image Segmentation这里面提到他们使用dice loss会曾在边界缺失的问题，bce则会是模糊的状态
 使用0.2dropout的dice loss效果要好
+deeplab ：vgg中到后面几层随着jump越来越大，按照receptive file算，feature中每个点是一个很大receptive filed的结果，这些点数量很少，那么在从原图
+提取feature数量这个角度来讲提取的过少，是sparse的，所以需要得到dense spatial score，也就是很深的层也得有很多feature，同时还得保证receptive file不能
+比原来对应那层小。要dense spatial就减少pooling，要 recepctive就得有更大的kernel但又不能减少feature的数量，就诞生了带洞的conv 
 need to do：
 上采样中的conv可以尝试用mobilenet中的深度卷积和channel卷积代替
 模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
