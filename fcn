@@ -30,7 +30,9 @@ The Importance of Skip Connections in Biomedical Image Segmentation这里面提�
 使用0.2dropout的dice loss效果要好
 deeplab ：vgg中到后面几层随着jump越来越大，按照receptive file算，feature中每个点是一个很大receptive filed的结果，这些点数量很少，那么在从原图
 提取feature数量这个角度来讲提取的过少，是sparse的，所以需要得到dense spatial score，也就是很深的层也得有很多feature，同时还得保证receptive file不能
-比原来对应那层小。要dense spatial就减少pooling，要 recepctive就得有更大的kernel但又不能减少feature的数量，就诞生了带洞的conv 
+比原来对应那层小。要dense spatial就得使后面的层size不能减小太多（可以减少pooling），要 recepctive就得有更大的kernel但又不能减少feature的数量（所以不能用pooling来
+获得更大的receptive field）有不能真的增大很多kernel（因为stride小的kernel会和临近的kernel产生重叠，而导致增加receptive filed增加量有限，其实tux
+金字塔也可以，当然这是deeplav3的），就诞生了带洞的conv 
 need to do：
 上采样中的conv可以尝试用mobilenet中的深度卷积和channel卷积代替
 模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
