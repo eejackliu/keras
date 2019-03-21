@@ -18,6 +18,8 @@ http://zike.io/posts/calculate-receptive-field-for-vgg-16/这个页面详细计�
 deep lab 中的这句话 
  After the first fully connected layer has 4,096 fil-ters of large 7 × 7 spatial size and becomes the computational bottleneck in our dense score map
 computation. 他是指把那7＊7＊512 个特征变成fc中的4096个参数需要 4096个7＊7那么大的连接网络
+cnn的equivariant vs. invariant （https://zhuanlan.zhihu.com/p/41682204）
+
 
 
 
