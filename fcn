@@ -19,8 +19,10 @@ deep lab 中的这句话
  After the first fully connected layer has 4,096 fil-ters of large 7 × 7 spatial size and becomes the computational bottleneck in our dense score map
 computation. 他是指把那7＊7＊512 个特征变成fc中的4096个参数需要 4096个7＊7那么大的连接网络
 cnn的equivariant vs. invariant （https://zhuanlan.zhihu.com/p/41682204）
-
-
+Rethinking Atrous Convolution for Semantic Image Segmentation 若想提高对于不同体积的识别率可以用不同大小的图片在inference时输入然后综合结果
+在分类中resnet和mobilenet中pooling的个数不是很多，output_stride是input image spatial resoulution 和final output resolution的比率，感受
+野是每个像素。这就是stride，是每个等效conv跳过的面积，就是小于这个值的物体会被忽略。相临两个像素的感受野有可能都很大（比如200＊200），但是很大一部分是
+重叠的，增加的stride的才是新的不同的信息.连续的atrous使用相同的rate会产生gridding问题
 
 
 论文state of art
@@ -45,7 +47,8 @@ need to do：
 unet论文中使用overlap-tile方式把大的图片（3000＊3000）切成小的照片（本质上是同样物体的重复出现）但是且出来的照片会有一圈padding，这些padding来自
 与切的时候相邻的区域，没有则以镜像padding解决，pytorch中以replicate参数决定。值得尝试这种方案，如果不用这种方案而使用same的conv就能取得不错效果则不用
 上采样过程中逐步以近似0.5倍率效果貌似比ternausnet中要好
-
+DeepLabv3:Rethinking Atrous Convolution for Semantic Image Segmentation 这里在introduction的fig1 提到image pyramid来提取多种scale的feature
+是否可以学习encorder-decorde模式，把中间几层当作image pyramid的一部分来和最后的一层组成image pyramid
 需要阅读的论文
 Focal Loss for Dense Object Detection一
 
