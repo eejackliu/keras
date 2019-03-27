@@ -23,6 +23,17 @@ Rethinking Atrous Convolution for Semantic Image Segmentation 若想提高对于
 在分类中resnet和mobilenet中pooling的个数不是很多，output_stride是input image spatial resoulution 和final output resolution的比率，感受
 野是每个像素。这就是stride，是每个等效conv跳过的面积，就是小于这个值的物体会被忽略。相临两个像素的感受野有可能都很大（比如200＊200），但是很大一部分是
 重叠的，增加的stride的才是新的不同的信息.连续的atrous使用相同的rate会产生gridding问题
+understanding convolution for semantic segmentation 连续几层使用相同r的dilate conv会让第二层中的dilate conv 的kernel非0部分与之前的棋盘
+叠加，造成局部信息缺失，获得过于large distance的信息。其中3.2 
+“maximum distance between two nonzero values  as  Mi = max[Mi+1 − 2ri, Mi+1 − 2(Mi+1 − ri ), ri ], 这是指一系列的dilated rates
+［r1,r2,r3....rn] 最后一层中r就是两个非0kernel元素的间隔（dilated的kernel），这个公式是要倒退回之前的一层，看看是不是因为dilated的叠加会使mi大于
+kernel（大于kernel会造成获得信息的距离过远）这一系列的r不能有超过1的公约数。否则棋盘效果仍在. 3.2.1中的multi-grid说rates=2＊（1，2，4）这里的1，2，4
+指的是dialte中的hole的数量，棋盘的产生也是因为连续的几个conv的hole有倍数关系。rates要在这个mutigrid上乘以2是因为这一层不用pool来扩大感受野
+而用dialte conv扩大感受野，pool的倍数是2，这里也就是2.因为kernel中间插的是hole，hole扩大几倍，kernel就扩大几倍。同理，后面的bolock就是4，8依次类推
+需要上采样的倍数为r，当前网络特征图的维度为 h × w × c ￼ ，分割任务共需要预测L类结果。则DUC模块仅需要在之前的特征后添加一个全连接层，输出h × w × (d2 × L), ￼ 的分割结果。
+其中心点在于DUC将最后需要预测得到的高分辨率分割结果(尺寸为L＊rH*rW ￼ )拆分为更小、通道数更多的小分割结果。相当与resnet或者mobilenet中的channel数量
+先膨胀再卷及然后缩小channel数量。意思就是说一个h＊w＊c的 matrix 可以被小分辨率但是更多的channel代替。这里的DUC就是反向的过程，把提取到的众多特征先用
+1＊1的conv当全连接变成(d＊＊2 × L)个channel（2是平方的意思）然后用这个逆过程还原图片
 
 
 论文state of art
@@ -41,6 +52,8 @@ deeplabv1 是把最后两层的pooling的stride2改成了1，这样就是下采�
 来代替原本用maxpooling造成的receptive field增长。所以第4个pooling之后的conv的hole是2，第5个pooling之后的hole是4，hole的倍数就是kernel的倍数
 label需要用双线性插值将lable降低至1／8，这样在真值周围会因为插值造成模糊（比真值小一点的数）。用这个去做crossentry会造成边缘模糊
 need to do：
+
+IDW-cnn 弱监督语义分割 deeplabv2 提到过
 上采样中的conv可以尝试用mobilenet中的深度卷积和channel卷积代替
 模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
 使用sequeezenet来构建，conv层有没有pading=1的影响。
