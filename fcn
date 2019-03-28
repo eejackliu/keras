@@ -34,6 +34,8 @@ kernel（大于kernel会造成获得信息的距离过远）这一系列的r不�
 其中心点在于DUC将最后需要预测得到的高分辨率分割结果(尺寸为L＊rH*rW ￼ )拆分为更小、通道数更多的小分割结果。相当与resnet或者mobilenet中的channel数量
 先膨胀再卷及然后缩小channel数量。意思就是说一个h＊w＊c的 matrix 可以被小分辨率但是更多的channel代替。这里的DUC就是反向的过程，把提取到的众多特征先用
 1＊1的conv当全连接变成(d＊＊2 × L)个channel（2是平方的意思）然后用这个逆过程还原图片
+Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation  pooling就是stride不为1的conv，多个layer叠加
+stride得相乘，因为第二层stride过的元素每一个都是stride第一层的结果
 
 
 论文state of art
