@@ -68,3 +68,12 @@ if step_per_epoch=0 or train_data give 0 images will cause  AttributeError: ‘P
 如果model输出有3个结果那么 model.compile()中的loss就得传一个［diceloss,diceloss,diceloss］这种list进去，metrics是每个epoch结束后进行validation用的
 所以得指定需要拿出输出指定的结果 ，这些结果应该和loss是一样的只不过loss是对应与特定的loss函数，metrics是对应accuracy，好像在model.fit_generate()里面要指定
 validation data
+
+tf.keras.models.save_model出现AttributeError: ‘NoneType’ object has no attribute ‘update’ 这个是 model.get_config()报出来的，感觉像是
+model的图没法保存，getconfig只能拿到None https://blog.csdn.net/mieleizhi0522/article/details/83057946 这个提示说tensoflow里面不能又动态的量
+resize需要接受固定值 把上采样的改成固定值后解决问题
+
+
+
+
+
