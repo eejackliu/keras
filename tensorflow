@@ -90,3 +90,4 @@ resize需要接受固定值 把上采样的改成固定值后解决问题
 ## converter=tf.lite.TFLiteConverter.from_concrete_function(concrete_func)
 ## tflite_model = converter.convert()
 全部使用keras且upsampling用github实现，load_model是没有问题的，精度也高1%，看起来也顺畅，棋盘效果比较小
+最后输出前加一个sigmoid作用也就是把输出固定在0-1之间而已，没有明显的效果提升，最好结果在0。6左右
