@@ -72,8 +72,21 @@ validation data
 tf.keras.models.save_model出现AttributeError: ‘NoneType’ object has no attribute ‘update’ 这个是 model.get_config()报出来的，感觉像是
 model的图没法保存，getconfig只能拿到None https://blog.csdn.net/mieleizhi0522/article/details/83057946 这个提示说tensoflow里面不能又动态的量
 resize需要接受固定值 把上采样的改成固定值后解决问题
-
-
-
-
-
+1.13.1使用boline原版1.13代码（这个是用keras写的，其中upsampling用的是github包装过的upsampling（里面是tf.image.resize)这个使用load_model的name——scope可以成功
+载入。但是在TFLiteConverter的时候会报AttributeError: 'Node' object has no attribute 'output_masks'
+根据https://stackoverflow.com/questions/51821537/attributeerror-node-object-has-no-attribute-output-masks
+猜测有可能是因为在主要是keras的环境下用tensorflow，断点加单步发现在（，1,1,256）relu处出错，应该是下一步的上采用问题，在换用keras自带上采样层之后解决问题
+使用pip源的tf2.0,keras也是tf.keras但是会在load_model时候遇到 model=tf.keras.models.load_model('dddtrue_weight_dsf.hdf5',custom_objects={'relu6':relu6})  custom_objects=custom_objects)
+这种错误inputs.insert(index, constant)  TypeError: an integer is required
+还是认为是github实现的resize的问题
+直接使用以下的用tf2.0特殊的tflite转换方式也会卡在resize那里，暂时无法解决，只能退回到1.13用全部keras的办法解决问题
+## model = tf.keras.models.load_model('dddtrue_weight_dsf.h5')
+##
+## tf.saved_model.save(model,'tf2')
+## model = tf.saved_model.load('tf2')
+## concrete_func = model.signatures[
+##   tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
+##
+## converter=tf.lite.TFLiteConverter.from_concrete_function(concrete_func)
+## tflite_model = converter.convert()
+全部使用keras且upsampling用github实现，load_model是没有问题的，精度也高1%，看起来也顺畅，棋盘效果比较小
