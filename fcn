@@ -53,6 +53,10 @@ deeplab ：vgg中到后面几层随着jump越来越大，按照receptive file算
 deeplabv1 是把最后两层的pooling的stride2改成了1，这样就是下采样8倍，atrous conv用了padding之后就不会缩小feature的尺寸，用atrous中的hole的比例
 来代替原本用maxpooling造成的receptive field增长。所以第4个pooling之后的conv的hole是2，第5个pooling之后的hole是4，hole的倍数就是kernel的倍数
 label需要用双线性插值将lable降低至1／8，这样在真值周围会因为插值造成模糊（比真值小一点的数）。用这个去做crossentry会造成边缘模糊
+
+model distillation ：Caruana and his collaborators  考虑到softmax后的lable会使一些概率小的量变成离0很近，不利于计算lossfunction（乘后容易变0）
+使用进入softmax之前的logits来作为 softlabel 。small model和 softlabel之间的loss是squared difference（logitd的大模型和要训练的小模型）
+
 need to do：
 
 IDW-cnn 弱监督语义分割 deeplabv2 提到过
@@ -73,6 +77,8 @@ structures in electron microscopy images
 
 
 
+keras ＆ torch
+keras想要进行element wise的运算最好使用 lambda 例子：keras.layers.Lambda(lambda x:(1/temp)*x)(x)
 
 
 
@@ -80,6 +86,40 @@ structures in electron microscopy images
 
 
 
+import tensorflow as tf
+sess=tf.Session()
+# tf.saved_model.loader.load(sess,[tf.saved_model.tag_constants.SERVING],'deeplabv3_mnv2_dm05_pascal_trainval')
+# with tf.Session() as sess:
+f=open('./deeplabv3_mnv2_dm05_pascal_trainval/frozen_inference_graph.pb', 'rb')
+graph_def = tf.GraphDef()
+graph_def.ParseFromString(f.read())
+# print (graph_def)
+# tf.import_graph_def(graph_def)
+graph_node=[ i for i in graph_def.node]
+graph_name=[i.name for i in graph_node]
+graph_value=[ None  if i.attr['value'].ByteSize()==0 else tf.make_ndarray(i.attr['value'].tensor) for i in graph_node]
+c={i:j for i, j in zip(graph_name,graph_value)}
+# with open('qwe','w') as f:
+#     for i in graph_name:
+#         f.writelines(i+'\n')
+# import numpy as np
+# np.save('ten.npy',c)
+# l=[]
+# for i in graph_node:
+#     if  i.attr['value'].ByteSize()==0:
+#         l.append(None)
+#     else:
+#         try:
+#            l.append(tf.make_ndarray(i.attr['value']))
+#         except:
+#             l.append('error')
+# r=dict()
+# for i,j in zip(graph_node,graph_value):
+#     try:
+#         r[i]=j
+#     except:
+#         print(i)
+#         print(j)
 
 
 
