@@ -79,8 +79,14 @@ structures in electron microscopy images
 
 keras ＆ torch
 keras想要进行element wise的运算最好使用 lambda 例子：keras.layers.Lambda(lambda x:(1/temp)*x)(x)
-
-
+keras 的多个参数一般是以[]的形式按序传入 metric。 
+model.compile(
+    optimizer=optimizers.SGD(lr=1e-1, momentum=0.9, nesterov=True), 
+    loss=lambda y_true, y_pred: knowledge_distillation_loss(y_true, y_pred, lambda_const), 
+    metrics=[accuracy, top_5_accuracy, categorical_crossentropy, soft_logloss]
+)这是一个例子，loss传入一个keras自带的loss名称如‘binary_crossentropy’ 或者上面这样是个函数，函数的参数列表顺序如上面这个lambda
+y_true, y_pred. metrics 也接受自定义的函数，上面有四个评价函数，每个都接受y_true, y_pred这种形式的参数。在valdation set上面的merric会
+有一个prefix ‘val_‘ ，所以EarlyStopping(monitor='val_accuracy', patience=4, min_delta=0.01)这里面就得加‘val_'才行
 
 
 
