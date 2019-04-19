@@ -58,7 +58,10 @@ model distillation ：Caruana and his collaborators  考虑到softmax后的lable
 使用进入softmax之前的logits来作为 softlabel 。small model和 softlabel之间的loss是squared difference（logitd的大模型和要训练的小模型）
 
 need to do：
-
+u_net结构可以较好恢复边缘细节 ，这说明了skip connection的重要性
+dilation rate取没有共同约数如2，3，5，7不会产生方格效应并且能较好提升IOU(出自图森一篇论文) deeplabv3的论文里有，但是这样没法用pretrain的 classfication（汝resnet）
+在不同scale添加loss辅助训练 这个值得尝试，需要产生小尺寸的label，但是小尺寸的softlabel会不会更好？
+OHEM 这个把loss打的样本做hard label来训练，可以减少因为样本不均衡造成的影响
 IDW-cnn 弱监督语义分割 deeplabv2 提到过
 上采样中的conv可以尝试用mobilenet中的深度卷积和channel卷积代替
 模型运行出的结果简单以0.5作为阈值来判断像素是否为背景，用val集来找阈值应该效果会更好
@@ -75,8 +78,11 @@ Focal Loss for Dense Object Detection一
 Multi-class segmentation of neuronal
 structures in electron microscopy images
 
-
-
+void fillConvexPoly 可以根据点定位画图
+https://python-parallel-programmning-cookbook.readthedocs.io/zh_CN/latest/chapter4/02_Using_the_concurrent.futures_Python_modules.html
+a.rotate(90,expand=True)
+通过h/w 来算横向还是竖着的
+https://www.jianshu.com/p/e15951bfe8a3
 keras ＆ torch
 keras想要进行element wise的运算最好使用 lambda 例子：keras.layers.Lambda(lambda x:(1/temp)*x)(x)
 keras 的多个参数一般是以[]的形式按序传入 metric。 
