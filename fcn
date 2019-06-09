@@ -36,10 +36,15 @@ kernel（大于kernel会造成获得信息的距离过远）这一系列的r不�
 1＊1的conv当全连接变成(d＊＊2 × L)个channel（2是平方的意思）然后用这个逆过程还原图片
 Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation  pooling就是stride不为1的conv，多个layer叠加
 stride得相乘，因为第二层stride过的元素每一个都是stride第一层的结果
-
-
+hed:
+这个类似fcn但是label是边缘的，论文主要点在于sile_out的深监督以及修改过的crossentrypy,因为label中大部分是背景所以不同的crossentrypy容易陷入局部最小
+这个论文在正样本的-log前乘以正样本像素个数占总像素个数的比例，负样本则在前面诚意
+multi-stream ： 有多个不同的并行network，各自有不同的参数
 论文state of art
-fcn 全卷积，以及 最后的实验证明类别比例与照片比例不一致是不影响结果的
+fcn 全卷积，以及 最后的实验证明类别比例与照片比例不一致是不影响结果的,fcn为什么padding是100
+Why pad the input?: The 100 pixel input padding guarantees that the network output can be aligned to the input for any input size in the given datasets, for instance PASCAL VOC. The alignment is handled automatically by net specification and the crop layer. It is possible, though less convenient, to calculate the exact offsets necessary and do away with this amount of padding.
+
+
 unet overlap-tile方式以及u形结构
 TernausNet: U-Net with VGG11 Encoder Pre-Trained on ImageNet for Image Segmentation 使用参数vgg预训练参数，上采样部分要取下采样block在maxpool前的最后一个（还得是2的次方）
 而且同一倍数的层中，上采样是下采样倍数的一半。这在人像上比unet那种镜像对称的效果好（nest形式中三层高5%，五层的高2%）
